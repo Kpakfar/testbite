@@ -20,7 +20,7 @@ Here the test only ever buys one item, so `* q` and `/ q` look the same. That is
 ## Install
 
 ```bash
-pipx install testbite      # or: pip install testbite
+pipx install git+https://github.com/Kpakfar/testbite
 ```
 
 Needs Python 3.9+ and git. No other dependencies.
@@ -64,7 +64,16 @@ Text inside strings and comments is never touched. The mutations are line-level 
 /plugin install testbite@testbite
 ```
 
-You get a skill that tells the agent to run `testbite` after writing tests, and an optional **Stop hook** that refuses to let the agent finish while mutants survive. The hook is opt-in per repo: put your test command in a `.testbite` file at the repo root (`pytest -q`). It blocks at most once per turn, so it cannot loop.
+You get a skill that tells the agent to run `testbite` after writing tests, and an optional **Stop hook** that refuses to let the agent finish while mutants survive. The plugin bundles its own copy of testbite, so the hook needs nothing on your PATH.
+
+The hook is **off until you approve a test command for a repo**, from your own terminal:
+
+```bash
+cd my-project
+testbite trust -- pytest -q     # approve; `testbite trust --revoke` to undo
+```
+
+The approval is stored in `~/.config/testbite/trusted.json`, outside the repo, so a cloned repository can never choose the command your hook runs. Once approved, on each Stop the hook mutates the diff (max 20 mutants, 10 minute budget) and blocks with the survivors listed. It skips if the code hasn't changed since its last run and blocks at most twice per session, so it cannot loop or nag. Set `TESTBITE_MAX` to change the mutant cap.
 
 ## Develop
 

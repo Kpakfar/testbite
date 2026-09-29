@@ -3,6 +3,7 @@
     testbite -- pytest -q                 # uncommitted changes vs HEAD
     testbite --base main -- npm test      # everything on this branch
     testbite --list                       # show planned mutants, run nothing
+    testbite trust -- pytest -q           # let the Claude Code Stop hook run this command here
 
 Exit codes: 0 = every mutant killed (or score >= --min-score), 1 = survivors,
 2 = setup error or the test suite fails before any mutation.
@@ -18,6 +19,7 @@ import time
 from pathlib import Path
 
 from . import __version__
+from . import trust
 from .diff import changed_lines, git
 from .mutate import plan
 
@@ -53,6 +55,14 @@ def restore_backup(root):
     return n
 
 
+def kill_group(p):
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    p.wait()
+
+
 def run_tests(cmd, root, timeout):
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     start = time.monotonic()
@@ -61,13 +71,38 @@ def run_tests(cmd, root, timeout):
     try:
         code = p.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        os.killpg(p.pid, signal.SIGKILL)
-        p.wait()
+        kill_group(p)
         return "timeout", time.monotonic() - start
+    except BaseException:  # Ctrl-C / SIGTERM: don't leave the test run alive against restored files
+        kill_group(p)
+        raise
     return ("pass" if code == 0 else "fail"), time.monotonic() - start
 
 
+def main_trust(argv):
+    ap = argparse.ArgumentParser(prog="testbite trust",
+                                 description="Allow the Claude Code Stop hook to run this test command in this repo.")
+    ap.add_argument("cmd", nargs=argparse.REMAINDER)
+    ap.add_argument("--revoke", action="store_true", help="remove this repo's approval")
+    a = ap.parse_args(argv)
+    root = repo_root()
+    if a.revoke:
+        print("revoked" if trust.untrust(root) else "nothing to revoke")
+        return 0
+    cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
+    if not cmd:
+        current = trust.command_for(root)
+        print(f"trusted here: {current}" if current else "no trusted command; use: testbite trust -- pytest -q")
+        return 0
+    trust.trust(root, shlex.join(cmd) if len(cmd) > 1 else cmd[0])
+    print(f"testbite: the Claude Code Stop hook may now run `{trust.command_for(root)}` in {root}")
+    return 0
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["trust"]:
+        return main_trust(argv[1:])
     ap = argparse.ArgumentParser(prog="testbite", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", nargs=argparse.REMAINDER, help="test command, after --")
@@ -78,11 +113,13 @@ def main(argv=None):
     ap.add_argument("--per-line", type=int, default=3, help="max mutants per line (default 3)")
     ap.add_argument("--timeout", type=float, help="seconds per test run (default 3x baseline + 5)")
     ap.add_argument("--min-score", type=float, default=100, help="exit 0 if kill %% >= this (default 100)")
+    ap.add_argument("--budget", type=float, help="stop starting new mutants after this many seconds")
     ap.add_argument("--list", action="store_true", help="print planned mutants and exit")
     ap.add_argument("--json", action="store_true", help="machine-readable report")
     ap.add_argument("--restore", action="store_true", help="restore files from an interrupted run")
     ap.add_argument("--version", action="version", version=f"testbite {__version__}")
     a = ap.parse_args(argv)
+    started = time.monotonic()
     cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
 
     root = repo_root()
@@ -126,6 +163,9 @@ def main(argv=None):
 
     try:
         for i, m in enumerate(mutants, 1):
+            if a.budget and time.monotonic() - started > a.budget:
+                print(f"testbite: --budget reached; ran {i - 1} of {len(mutants)} mutants", file=sys.stderr)
+                break
             src = originals[m.file].decode().split("\n")
             src[m.line - 1] = m.mutated
             Path(root, m.file).write_text("\n".join(src))

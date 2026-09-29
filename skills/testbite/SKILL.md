@@ -13,4 +13,6 @@ AI-written tests often pass by construction: the same session wrote the code and
 4. If a survivor is a real no-op (dead code, logging), say so instead of adding a pointless test.
 5. Report the final score honestly.
 
-Only the diff is mutated, so a run takes seconds to minutes. If testbite is not installed: `pipx install testbite` (or `pip install testbite`).
+Only the diff is mutated, so a run takes seconds to minutes. If the `testbite` command is missing: `pipx install git+https://github.com/Kpakfar/testbite`.
+
+The user may have enabled a Stop hook (`testbite trust -- <cmd>`) that blocks you from finishing while mutants survive; treat its output the same way as steps 3 and 4.
