@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testbite"
+version = "0.1.0"
+description = "Do your tests bite? Mutation-test only the lines you just changed. Built for AI-written code."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "Khashayar Pakfar" }]
+keywords = ["mutation-testing", "testing", "ai", "claude-code", "git", "cli"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+  "Environment :: Console",
+]
+
+[project.scripts]
+testbite = "testbite.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Kpakfar/testbite"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

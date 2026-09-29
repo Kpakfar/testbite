@@ -1,0 +1,8 @@
+{
+  "name": "testbite",
+  "version": "0.1.0",
+  "description": "Mutation-test only the lines your AI agent just changed, and keep it from finishing while its tests can't catch a bug.",
+  "author": { "name": "Khashayar Pakfar" },
+  "repository": "https://github.com/Kpakfar/testbite",
+  "license": "MIT"
+}

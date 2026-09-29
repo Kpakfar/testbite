@@ -1,0 +1,7 @@
+{
+  "name": "testbite",
+  "owner": { "name": "Khashayar Pakfar" },
+  "plugins": [
+    { "name": "testbite", "source": ".", "description": "Mutation-test only the lines your AI agent just changed." }
+  ]
+}
