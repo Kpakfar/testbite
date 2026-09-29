@@ -1,7 +1,16 @@
 {
   "name": "testbite",
-  "owner": { "name": "Khashayar Pakfar" },
+  "owner": {
+    "name": "Khashayar Pakfar"
+  },
   "plugins": [
-    { "name": "testbite", "source": ".", "description": "Mutation-test only the lines your AI agent just changed." }
-  ]
+    {
+      "name": "testbite",
+      "source": ".",
+      "description": "Mutation-test only the lines your AI agent just changed."
+    }
+  ],
+  "metadata": {
+    "description": "Mutation-test only the lines your AI agent just changed."
+  }
 }
